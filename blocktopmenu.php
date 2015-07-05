@@ -28,31 +28,31 @@ require (dirname(__FILE__).'/menutoplinks.class.php');
 
 class Blocktopmenu extends Module
 {
-	private $_menu = '';
-	private $_html = '';
-	private $user_groups;
+	protected $_menu = '';
+	protected $_html = '';
+	protected $user_groups;
 
 	/*
 	 * Pattern for matching config values
 	 */
-	private $pattern = '/^([A-Z_]*)[0-9]+/';
+	protected $pattern = '/^([A-Z_]*)[0-9]+/';
 
 	/*
 	 * Name of the controller
 	 * Used to set item selected or not in top menu
 	 */
-	private $page_name = '';
+	protected $page_name = '';
 
 	/*
 	 * Spaces per depth in BO
 	 */
-	private $spacer_size = '5';
+	protected $spacer_size = '5';
 
 	public function __construct()
 	{
 		$this->name = 'blocktopmenu';
 		$this->tab = 'front_office_features';
-		$this->version = '2.1.1';
+		$this->version = '2.2.0';
 		$this->author = 'PrestaShop';
 
 		$this->bootstrap = true;
@@ -130,7 +130,7 @@ class Blocktopmenu extends Module
 		return true;
 	}
 
-	private function uninstallDb()
+	protected function uninstallDb()
 	{
 		Db::getInstance()->execute('DROP TABLE `'._DB_PREFIX_.'linksmenutop`');
 		Db::getInstance()->execute('DROP TABLE `'._DB_PREFIX_.'linksmenutop_lang`');
@@ -177,22 +177,22 @@ class Blocktopmenu extends Module
 				if (count($shops) == 1)
 				{
 					if (is_array($items) && count($items))
-		 				$updated = Configuration::updateValue('MOD_BLOCKTOPMENU_ITEMS', (string)implode(',', $items), false, (int)$shop_group_id, (int)$shop_id);
-		 			else
-		 				$updated = Configuration::updateValue('MOD_BLOCKTOPMENU_ITEMS', '', false, (int)$shop_group_id, (int)$shop_id);
-		 		}
+						$updated = Configuration::updateValue('MOD_BLOCKTOPMENU_ITEMS', (string)implode(',', $items), false, (int)$shop_group_id, (int)$shop_id);
+					else
+						$updated = Configuration::updateValue('MOD_BLOCKTOPMENU_ITEMS', '', false, (int)$shop_group_id, (int)$shop_id);
+				}
 
-		 		$updated &= Configuration::updateValue('MOD_BLOCKTOPMENU_SEARCH', (bool)Tools::getValue('search'), false, (int)$shop_group_id, (int)$shop_id);
+				$updated &= Configuration::updateValue('MOD_BLOCKTOPMENU_SEARCH', (bool)Tools::getValue('search'), false, (int)$shop_group_id, (int)$shop_id);
 
-	 			if (!$updated)
-	 			{
-	 				$shop = new Shop($shop_id);
-	 				$errors_update_shops[] =  $shop->name;
-	 			}
+				if (!$updated)
+				{
+					$shop = new Shop($shop_id);
+					$errors_update_shops[] =  $shop->name;
+				}
 
 			}
 
- 			if (!count($errors_update_shops))
+			if (!count($errors_update_shops))
 				$this->_html .= $this->displayConfirmation($this->l('The settings have been updated.'));
 			else
 				$this->_html .= $this->displayError(sprintf($this->l('Unable to update settings for the following shop(s): %s'), implode(', ', $errors_update_shops)));
@@ -231,7 +231,7 @@ class Blocktopmenu extends Module
 						if (!$added)
 						{
 							$shop = new Shop($shop_id);
- 							$errors_add_link[] =  $shop->name;
+							$errors_add_link[] =  $shop->name;
 						}
 
 					}
@@ -319,14 +319,14 @@ class Blocktopmenu extends Module
 		return $this->_html;
 	}
 
-	private function getWarningMultishopHtml()
+	protected function getWarningMultishopHtml()
 	{
 		return '<p class="alert alert-warning">'.
 					$this->l('You cannot manage top menu items from a "All Shops" or a "Group Shop" context, select directly the shop you want to edit').
 				'</p>';
 	}
 
-	private function getCurrentShopInfoMsg()
+	protected function getCurrentShopInfoMsg()
 	{
 		$shop_info = null;
 
@@ -342,7 +342,7 @@ class Blocktopmenu extends Module
 				'</div>';
 	}
 
-	private function getMenuItems()
+	protected function getMenuItems()
 	{
 		$items = Tools::getValue('items');
 		if (is_array($items) && count($items))
@@ -479,7 +479,7 @@ class Blocktopmenu extends Module
 			switch (substr($item, 0, strlen($value[1])))
 			{
 				case 'CAT':
-					$this->_menu .= $this->generateCategoriesMenu(Category::getNestedCategories($id, $id_lang, true, $this->user_groups, true, '', ' ORDER BY c.`level_depth` ASC, cl.`name` ASC'));
+					$this->_menu .= $this->generateCategoriesMenu(Category::getNestedCategories($id, $id_lang, false, $this->user_groups, true, '', ' ORDER BY c.`level_depth` ASC, cl.`name` ASC'));
 					break;
 
 				case 'PRD':
@@ -609,6 +609,11 @@ class Blocktopmenu extends Module
 			else
 				$link = $this->context->link->getPageLink('index');
 
+			/* Whenever a category is not active we shouldnt display it to customer */
+			if ((bool)$cat->active === false) {
+				break;
+			}
+
 			$html .= '<li'.(($this->page_name == 'category'
 				&& (int)Tools::getValue('id_category') == (int)$category['id_category']) ? ' class="sfHoverForce"' : '').'>';
 			$html .= '<a href="'.$link.'" title="'.$category['name'].'">'.$category['name'].'</a>';
@@ -622,7 +627,7 @@ class Blocktopmenu extends Module
 				{
 					$files = scandir(_PS_CAT_IMG_DIR_);
 
-					if (count($files) > 0)
+					if (count(preg_grep('/^'.$category['id_category'].'-([0-9])?_thumb.jpg/i', $files)) > 0)
 					{
 						$html .= '<li class="category-thumbnail">';
 
@@ -750,7 +755,7 @@ class Blocktopmenu extends Module
 		return $this->hookDisplayTop($params);
 	}
 
-	private function getCMSCategories($recursive = false, $parent = 1, $id_lang = false, $id_shop = false)
+	protected function getCMSCategories($recursive = false, $parent = 1, $id_lang = false, $id_shop = false)
 	{
 		$id_lang = $id_lang ? (int)$id_lang : (int)Context::getContext()->language->id;
 		$id_shop = ($id_shop !== false) ? $id_shop : Context::getContext()->shop->id;
@@ -802,7 +807,7 @@ class Blocktopmenu extends Module
 
 	}
 
-	private function getCMSPages($id_cms_category, $id_shop = false, $id_lang = false, $id_shop = false)
+	protected function getCMSPages($id_cms_category, $id_shop = false, $id_lang = false, $id_shop = false)
 	{
 		$id_shop = ($id_shop !== false) ? (int)$id_shop : (int)Context::getContext()->shop->id;
 		$id_lang = $id_lang ? (int)$id_lang : (int)Context::getContext()->language->id;
@@ -907,7 +912,7 @@ class Blocktopmenu extends Module
 		$this->clearMenuCache();
 	}
 
-	private function clearMenuCache()
+	protected function clearMenuCache()
 	{
 		$this->_clearCache('blocktopmenu.tpl');
 	}
@@ -1161,7 +1166,7 @@ class Blocktopmenu extends Module
 		$shops_to_get = Shop::getContextListShopID();
 
 		foreach ($shops_to_get as $shop_id)
-			$html .= $this->generateCategoriesOption($this->customGetNestedCategories($shop_id, null, (int)$this->context->language->id, true), $items);
+			$html .= $this->generateCategoriesOption($this->customGetNestedCategories($shop_id, null, (int)$this->context->language->id, false), $items);
 		$html .= '</optgroup>';
 
 		// BEGIN Shops
@@ -1206,7 +1211,7 @@ class Blocktopmenu extends Module
 	}
 
 
-	public function customGetNestedCategories($shop_id, $root_category = null, $id_lang = false, $active = true, $groups = null, $use_shop_restriction = true, $sql_filter = '', $sql_sort = '', $sql_limit = '')
+	public function customGetNestedCategories($shop_id, $root_category = null, $id_lang = false, $active = false, $groups = null, $use_shop_restriction = true, $sql_filter = '', $sql_sort = '', $sql_limit = '')
 	{
 		if (isset($root_category) && !Validate::isInt($root_category))
 			die(Tools::displayError());
